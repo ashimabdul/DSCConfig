@@ -1,0 +1,273 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "Engagement": {
+			"type": "string",
+			"minLength": 4,
+			"maxLength": 255
+		},
+        "botsPasswordSecObj": {
+            "type": "secureObject"
+        },
+        "domainAdminPassword": {
+			"type": "securestring"
+        },
+        "builtInAdminPassword": {
+			"type": "securestring"
+        },
+        "ADNamePrefix": {
+			"type": "string"
+		},
+        "myWorkspaceID": {
+			"type": "string"
+		},
+		"myWorkspaceKey": {
+			"type": "string"
+        },
+        "domainName": {
+			"type": "string"
+		},
+		"domainNetBiosName": {
+			"type": "string"
+		},
+		"botsCount": {
+			"type": "int",
+			"minValue": 1,
+			"maxValue": 50
+        },
+        "primaryDCIp": {
+			"type": "string"
+        },
+        "devNamePrefix": {
+			"type": "string"
+		},
+        "namePrefix": {
+			"type": "string"
+        },
+        "artifactsURI": {
+			"type": "string"
+		},
+		"softwareURI": {
+			"type": "string"
+		},
+		"artifactSasToken": {
+			"type": "string"
+		},
+		"softwareSasToken": {
+			"type": "string"
+        },
+        "dscAutomationUri": {
+			"type": "string"
+		},
+		"dscAutomationKey": {
+			"type": "string"
+        },
+        "virtualNetworkResourceGroupName": {
+			"type": "string"
+		},
+		"virtualNetworkName": {
+			"type": "string"
+        },
+        "subnetName": {
+			"type": "string"
+        },
+        "BPApplicationNamePrefix": {
+			"type": "string"
+        },
+        "storageAccountHotName": {
+			"type": "string"
+        },
+        "fileShare": {
+			"type": "string"
+		},
+		"fileShareKey": {
+			"type": "string"
+		}
+    },
+    "variables": {
+        "devnamePrefix": "[parameters('devnamePrefix')]",
+        "CustomScriptToRun": "configurelcmforaapull.ps1",
+        "DevBluePrismPort": 8200,
+        "ProdBluePrismPort": 8199,
+        "DSC_W2K16_Member_BOTs": "W2K16_BluePrism_BOTs_v1_0.localhost",
+        "DSC_W2K16_Member": "W2K16_MemberServer_v1_0.localhost",
+        "storageAccountHotName": "[toLower(parameters('storageAccountHotName'))]",
+        "namePrefix": "[parameters('namePrefix')]",
+        "CWP_Configuration": {
+			"enabled": true,
+			"CWP_customerId": "_r0-EV3fQMyczVWQ-mytaQ",
+			"CWP_domainId": "_P286G92SsuCwJVKq5ivtg",
+			"CWP_forceReboot": "yes",
+			"CWP_clientId": "O2ID._r0-EV3fQMyczVWQ-mytaQ._P286G92SsuCwJVKq5ivtg.pu6jallivccad4a55enrt1jvkq",
+			"CWP_customerSecretKey": "86751a0fc61c94cda7f7a77b5366885a9977a585db86cf8cffc6c1e8b4140e37",
+			"CWP_clientSecretKey": "136olflkrdt16tqc7ssujvfcr5u6adkserf9"
+		},
+		"OMS_Configuration": {
+			"myWorkSpaceId": "[parameters('myWorkspaceID')]",
+			"myWorkspaceKey": "[parameters('myWorkspaceKey')]"
+		},
+		"DomainConfig": {
+			"domainName": "[parameters('domainName')]",
+			"domainNetBiosName": "[toUpper(parameters('domainNetBiosName'))]",
+			"domainAdminUserName": "BukowCh",
+			"domainAdminPassword": "[parameters('domainAdminPassword')]"
+        },
+        "bpRuntimeConfig": {
+			"Size": "Standard_D2s_v3",
+			"Dns": "[parameters('primaryDCIp')]",
+			"Dev": {
+				"ComputerName": "[toUpper(concat(variables('devnamePrefix'),'BR'))]",
+				"NicName": "[toUpper(concat(variables('devnamePrefix'),'BR'))]",
+				"Port": "[variables('DevBluePrismPort')]"
+			},
+			"Prod": {
+				"ComputerName": "[toUpper(concat(variables('namePrefix'),'BR'))]",
+				"NicName": "[toUpper(concat(variables('namePrefix'),'BR'))]",
+				"Port": "[variables('ProdBluePrismPort')]"
+			},
+			"DscConfigurationFile": "[variables('DSC_W2K16_Member_BOTs')]"
+        },
+        "LocalAdminCredentials": {
+			"builtInAdminUserName": "BukowCh",
+			"builtInAdminPassword": "[parameters('builtInAdminPassword')]"
+        },
+        "RepoUris": {
+			"artifactsURI": "[parameters('artifactsURI')]",
+			"softwareURI": "[parameters('softwareURI')]",
+			"artifactSasToken": "[parameters('artifactSasToken')]",
+			"softwareSasToken": "[parameters('softwareSasToken')]"
+        },
+        "Dsc_Configuration": {
+			"dscAutomationUri": "[parameters('dscAutomationUri')]",
+			"dscAutomationKey": "[parameters('dscAutomationKey')]",
+			"CustomScriptToRun": "[variables('CustomScriptToRun')]"
+        },
+        "vnetId": "[resourceId(parameters('virtualNetworkResourceGroupName'), 'Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]",
+        "subnetRef": "[concat(variables('vnetId'),'/subnets/',parameters('subnetName'))]",
+        "bpServerConfig": {
+			"ComputerName": "[toUpper(concat(parameters('BPApplicationNamePrefix'),'001'))]"
+        },
+        "adComputerConfig": {
+			"ComputerName": "[toUpper(concat(parameters('ADNamePrefix'),'001'))]"
+		},
+        "asgBOTs": "BOTs"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('adComputerConfig').ComputerName,'/Microsoft.Powershell.DSC')]",
+            "apiVersion": "2015-06-15",
+            "location": "[ResourceGroup().location]",
+            "properties": {
+                "publisher": "Microsoft.Powershell",
+                "type": "DSC",
+                "typeHandlerVersion": "2.75",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "wmfVersion": "latest",
+                    "configuration": {
+                        "url": "https://github.com/ashimabdul/DSCConfig/blob/master/AD2.zip?raw=true",
+                        "script": "AD2.ps1",
+                        "function": "AD2"
+                    },
+                    "configurationArguments": {
+                        "botsPasswordSecObj": "[parameters('botsPasswordSecObj')]"
+                    },
+                    "advancedOptions": {
+                        "downloadMappings": {
+                            "customWmfLocation": "https://go.microsoft.com/fwlink/?linkid=839516"
+                        }
+                    }
+                },
+                "protectedSettings": {
+                     "configurationArguments": {
+                        "AdminCredentials": {
+                            "userName": "BuKowch",
+                            "password": "[parameters('domainadminPassword')]"
+                    }
+                }
+                }
+            }
+        },
+        {
+			"name": "[concat(variables('bpRuntimeConfig').Prod.ComputerName,padLeft(add(copyIndex(),1), 3, '0'))]",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2017-05-10",
+			"dependsOn": [
+                "[concat(variables('adComputerConfig').ComputerName,'/Microsoft.Powershell.DSC')]"
+            ],
+			"properties": {
+				"mode": "Incremental",
+				"templateLink": {
+					"uri": "[concat(variables('RepoUris').artifactsURI,'bluePrismRuntime.json?',variables('RepoUris').artifactSasToken)]",
+					"contentVersion": "1.0.0.0"
+				},
+				"Parameters": {
+					"index": {
+						"value": "[padLeft(add(copyIndex(),1), 3, '0')]"
+					},
+					"ComputerConfig": {
+						"value": "[variables('bpRuntimeConfig')]"
+					},
+					"DomainConfig": {
+						"value": "[variables('DomainConfig')]"
+					},
+					"LocalAdminCredentials": {
+						"value": "[variables('LocalAdminCredentials')]"
+					},
+					"RepoUris": {
+						"value": "[variables('RepoUris')]"
+					},
+					"Dsc_Configuration": {
+						"value": "[variables('Dsc_Configuration')]"
+					},
+					"engagementName": {
+						"value": "[parameters('engagement')]"
+					},
+					"subnetRef": {
+						"value": "[variables('subnetRef')]"
+					},
+					"bpClientUser": {
+						"value": "[concat('BP.Runtime.',padLeft(add(copyIndex(),1), 3, '0'))]"
+					},
+					"bpControllerGroup": {
+						"value": "[concat('S-U-',parameters('engagement'),'-Controllers')]"
+					},
+					"bpApplicationGroup": {
+						"value": "[concat('S-U-',parameters('engagement'),'-Applications')]"
+					},
+					"bpServer": {
+						"value": "[variables('bpServerConfig').ComputerName]"
+					},
+					"enviroment": {
+						"value": "prod"
+					},
+					"applicationSecurityGroupName": {
+						"value": "[variables('asgBOTs')]"
+					},
+					"storageAccountHotName": {
+						"value": "[variables('storageAccountHotName')]"
+					},
+					"fileShare": {
+						"value": "[parameters('fileShare')]"
+					},
+					"fileShareKey": {
+						"value": "[parameters('fileShareKey')]"
+					},
+					"CWP_Configuration": {
+						"value": "[variables('CWP_Configuration')]"
+					},
+					"OMS_Configuration": {
+						"value": "[variables('OMS_Configuration')]"
+					}
+				}
+			},
+			"copy": {
+				"name": "botCopy",
+				"count": "[parameters('botsCount')]",
+				"mode": "Parallel"
+			}
+		}
+    ]
+}
